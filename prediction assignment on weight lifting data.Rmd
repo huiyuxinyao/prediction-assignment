@@ -1,0 +1,58 @@
+
+Prediction Assignment on Weight Lifting Exercise Dataset
+========================================================
+<br><br>
+
+##Summary
+The goal of this analysis is to use data from accelerometers to predict the manner in which people did the exercise. Given on the model selection based on random forests algorithm, we can reach a prediction accuracy of 0.99.
+<br><br>
+
+##Data reading and cleaning
+Download raw data into working directory and read the raw data.
+After observing the data and reading background information, we can find the raw dataset contains researchers' calculations such as max, min, toal, average. Besides that, there is a huge number of "NA" which is useless to us. Therefore, we clean the raw data by removing all the researchers' calculation columns and columns in which NAs take more than half percentage. The first column about row inex is removed as well.
+Store the cleaned dataset into "training"
+```{r}
+rawdata<-read.csv("pml-training.csv",na.strings=c("","NA"))
+removecal<-grep("^max|^min|^total|^avg|^var|^kurtosis",names(rawdata))
+cleanedcal<-rawdata[,-removecal]
+removeNA<-which(colSums(is.na(cleanedcal))>15000)
+cleanedNA<-cleanedcal[,-removeNA]
+training<-cleanedNA[,-1]
+```
+<br><br>
+
+##Split into train data and test data
+For cross validation purpose, we split the training into traindata and testdata with train data taking 60% and test data taking 40%.
+```{r}
+library(caret)
+library(rattle)
+library(rpart)
+library(randomForest)
+intrain<-createDataPartition(y=training$classe,p=0.6,list=FALSE)
+traindata<-training[intrain,]
+testdata<-training[-intrain,]
+```
+<br><br>
+
+##Model selection
+Using traindata, we build two models based on rpart function and randomForest function respectively. Plot the tree to view the data.
+```{r}
+rpartModel<-rpart(classe~.,data=traindata)
+library(rpart.plot)
+fancyRpartPlot(rpartModel)
+mod<-randomForest(classe~.,data=traindata)
+```
+<br><br>
+
+After comparing the in sample error, we choose the randomForest model which has 0 in sample error.
+```{r}
+confusionMatrix(traindata$classe,predict(rpartModel,traindata,type="class"))
+confusionMatrix(traindata$classe,predict(mod,traindata,type="class"))
+```
+<br><br>
+
+##Cross validation
+Now we use testdata to cross validate the accuracy. It turns out the out of sample error is pretty low, around 0.001. Therefore, we can say that we reach the prediction goal.
+```{r}
+confusionMatrix(testdata$classe,predict(mod,testdata,type="class"))
+```
